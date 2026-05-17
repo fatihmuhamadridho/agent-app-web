@@ -1,0 +1,219 @@
+@reference "../../../../styles/globals.css";
+
+.panel {
+  @apply relative flex flex-1 flex-col items-stretch justify-center overflow-hidden bg-[#121212] text-slate-100;
+}
+
+.toolbar {
+  @apply flex items-center justify-between px-4 py-4 text-neutral-500;
+}
+
+.toolbarDot {
+  @apply h-4 w-4 rounded-sm border border-white/20;
+}
+
+.threadTitle {
+  @apply text-sm font-semibold text-slate-100;
+}
+
+.body {
+  @apply relative flex min-h-0 flex-1 flex-col pb-4;
+}
+
+.historyPane {
+  @apply min-h-0 flex-1 overflow-y-auto px-7 py-2 pb-[260px];
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(77 77 77 / 0.95) rgb(20 20 20 / 0.95);
+}
+
+.historyPane::-webkit-scrollbar {
+  width: 14px;
+}
+
+.historyPane::-webkit-scrollbar-track {
+  background: rgb(20 20 20 / 0.95);
+}
+
+.historyPane::-webkit-scrollbar-thumb {
+  background-color: rgb(77 77 77 / 0.95);
+  border-radius: 999px;
+  border: 3px solid rgb(20 20 20 / 0.95);
+  background-clip: padding-box;
+}
+
+.historyPane::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(113 113 113 / 1);
+}
+
+.title {
+  @apply text-center text-[1.9rem] font-normal tracking-tight text-slate-100 md:text-[2.25rem];
+}
+
+.composer {
+  @apply absolute bottom-6 left-1/2 z-10 w-[min(760px,calc(100%-3.5rem))] -translate-x-1/2 rounded-3xl border border-white/10 bg-[#2b2b2b] px-4 py-3 shadow-[0_18px_35px_rgba(0,0,0,0.25)];
+}
+
+.prompt {
+  @apply min-h-[44px];
+}
+
+.prompt :global(textarea) {
+  @apply bg-transparent p-0 text-sm leading-6 text-slate-100 outline-none;
+}
+
+.prompt :global(textarea::placeholder) {
+  @apply text-neutral-500;
+}
+
+.composerBar {
+  @apply mt-3 flex items-center justify-between gap-4 border-t border-white/5 pt-3;
+}
+
+.thinkingPanel {
+  @apply flex flex-col gap-3;
+}
+
+.thinkingLabel {
+  @apply text-sm font-medium text-neutral-400;
+}
+
+.thinkingLine {
+  @apply h-px w-full bg-white/10;
+}
+
+.thinkingBubble {
+  @apply w-[78%];
+}
+
+.thinkingHistory {
+  @apply flex flex-col gap-3;
+}
+
+.thinkingHistoryLabel {
+  @apply text-sm font-medium text-neutral-400;
+}
+
+.thinkingHistoryLine {
+  @apply h-px w-full bg-white/10;
+}
+
+.toolButton {
+  @apply h-auto rounded-full bg-transparent px-0 py-0 text-sm font-medium text-[#ff7a1a] hover:bg-transparent;
+}
+
+.modelButton {
+  @apply h-auto gap-1 rounded-full bg-transparent px-0 py-0 text-left hover:bg-transparent;
+}
+
+.model {
+  @apply text-sm font-medium text-slate-50;
+}
+
+.modelMuted {
+  @apply text-sm text-neutral-400;
+}
+
+.chevron {
+  @apply text-neutral-400;
+}
+
+.iconMuted {
+  @apply text-neutral-400;
+}
+
+.sendButton {
+  @apply flex h-9 w-9 items-center justify-center rounded-full bg-neutral-400 p-0 text-neutral-900 hover:bg-neutral-300;
+}
+
+.modelPicker {
+  @apply relative;
+}
+
+.modelDropdown {
+  @apply absolute bottom-[calc(100%+10px)] right-0 z-20 flex w-[540px] overflow-visible rounded-[20px] border border-white/10 bg-[#232323] shadow-[0_18px_35px_rgba(0,0,0,0.45)];
+}
+
+.modelColumn {
+  @apply flex min-w-0 flex-1 flex-col gap-2 p-2;
+}
+
+.menuTitle {
+  @apply px-2 pt-1 text-xs font-medium text-neutral-500;
+}
+
+.menuList {
+  @apply flex flex-col gap-1;
+}
+
+.menuItem {
+  @apply flex items-center justify-between rounded-xl px-2 py-2 text-left text-slate-100 hover:bg-white/5;
+}
+
+.menuItemActive {
+  @apply bg-white/5;
+}
+
+.menuItemLabel {
+  @apply m-0 text-sm font-medium text-slate-100;
+}
+
+.menuItemSub {
+  @apply m-0 text-xs text-neutral-500;
+}
+
+.menuItemCheck {
+  @apply text-sm text-neutral-300;
+}
+
+.menuItemArrow {
+  @apply text-sm text-neutral-400;
+}
+
+.modelSubmenu {
+  @apply absolute left-[calc(100%+10px)] top-0 z-30 flex w-[250px] flex-col gap-2 rounded-[20px] border border-white/10 bg-[#232323] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.45)];
+}
+
+.suggestions {
+  @apply mx-auto w-full max-w-[760px] text-neutral-400;
+}
+
+.history {
+  @apply mx-auto flex w-full max-w-[760px] flex-col gap-3;
+}
+
+.content {
+  @apply min-h-0 w-full flex-1 overflow-visible;
+}
+
+.message {
+  @apply max-w-[760px] rounded-2xl border border-white/10 bg-white/[0.03] p-4;
+}
+
+.user {
+  @apply ml-auto w-[78%];
+}
+
+.assistant {
+  @apply mr-auto w-[78%];
+}
+
+.system {
+  @apply w-full text-neutral-400;
+}
+
+.messageText {
+  @apply m-0 whitespace-pre-wrap text-sm leading-6 text-slate-100;
+}
+
+.inlineMessage {
+  @apply m-0 max-w-[760px] whitespace-pre-wrap text-sm leading-6 text-slate-100;
+}
+
+.suggestionRow {
+  @apply border-t border-white/[0.06] px-2 py-4 first:border-t-0;
+}
+
+.suggestionText {
+  @apply m-0 text-sm;
+}

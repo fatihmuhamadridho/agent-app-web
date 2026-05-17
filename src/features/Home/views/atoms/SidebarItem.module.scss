@@ -1,0 +1,21 @@
+@reference "../../../../styles/globals.css";
+
+.item {
+  @apply w-full rounded-lg px-3 py-2 text-sm text-neutral-300 transition-colors;
+}
+
+.collapsed {
+  @apply justify-center px-0;
+}
+
+.active {
+  @apply bg-white/7 text-white;
+}
+
+.icon {
+  @apply flex h-4 w-4 items-center justify-center text-neutral-400;
+}
+
+.label {
+  @apply m-0 font-medium;
+}

@@ -1,0 +1,125 @@
+@reference "../../../../styles/globals.css";
+
+.sidebar {
+  @apply relative flex h-full w-[300px] flex-col overflow-hidden border-r border-white/10 bg-[#151515] py-4 text-slate-100 transition-[width] duration-200 ease-out;
+}
+
+.collapsed {
+  @apply w-[64px];
+}
+
+.collapseButton {
+  @apply absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-neutral-200 transition-colors hover:bg-white/10;
+}
+
+.nav {
+  @apply mb-5 px-3 pt-10;
+}
+
+.scrollArea {
+  @apply flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pr-1;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(77 77 77 / 0.95) rgb(20 20 20 / 0.95);
+}
+
+.scrollArea::-webkit-scrollbar {
+  width: 14px;
+}
+
+.scrollArea::-webkit-scrollbar-track {
+  background: rgb(20 20 20 / 0.95);
+}
+
+.scrollArea::-webkit-scrollbar-thumb {
+  background-color: rgb(77 77 77 / 0.95);
+  border-radius: 999px;
+  border: 3px solid rgb(20 20 20 / 0.95);
+  background-clip: padding-box;
+}
+
+.scrollArea::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(113 113 113 / 1);
+}
+
+.section {
+  @apply flex-shrink-0;
+}
+
+.sectionLabel {
+  @apply text-sm text-neutral-500;
+}
+
+.projectsHeader {
+  @apply flex items-center justify-between px-3;
+}
+
+.projectsHeaderActions {
+  @apply flex items-center gap-1 text-neutral-500;
+}
+
+.projectsHeaderButton {
+  @apply flex h-6 w-6 items-center justify-center rounded-md border-0 bg-transparent text-neutral-500 transition-colors hover:bg-white/5 hover:text-neutral-300;
+}
+
+.projectGroup {
+  @apply rounded-xl;
+}
+
+.projectHeader {
+  @apply flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border-0 bg-transparent px-3 py-1.5 text-left text-sm font-medium text-neutral-300 transition-colors hover:bg-white/5;
+}
+
+.projectHeaderMain {
+  @apply flex min-w-0 items-center gap-2;
+}
+
+.projectHeaderActions {
+  @apply flex shrink-0 items-center gap-1 text-neutral-500 opacity-0 transition-opacity duration-150;
+}
+
+.projectHeaderButton {
+  @apply flex h-6 w-6 items-center justify-center rounded-md border-0 bg-transparent text-neutral-500 transition-colors hover:bg-white/5 hover:text-neutral-300;
+}
+
+.projectHeader:hover .projectHeaderActions,
+.projectHeader:focus-visible .projectHeaderActions,
+.projectGroup:hover .projectHeaderActions {
+  @apply opacity-100;
+}
+
+.projectLabel {
+  @apply m-0 truncate;
+}
+
+.projectSessions {
+  @apply pl-4;
+}
+
+.toggleButton {
+  @apply ml-3 mt-1 w-fit cursor-pointer border-0 bg-transparent px-0 py-1 text-sm text-neutral-500 transition-colors hover:text-neutral-300;
+}
+
+.sessionItem {
+  @apply flex w-full cursor-pointer items-center justify-between rounded-lg border-0 bg-transparent px-3 py-2 text-left text-sm text-neutral-400 transition-colors hover:bg-white/5;
+}
+
+.sessionActive {
+  @apply bg-white/7 text-white;
+}
+
+.sessionLabel {
+  @apply m-0 min-w-0 flex-1 truncate font-medium;
+}
+
+.sessionTime {
+  @apply m-0 ml-3 shrink-0 text-xs text-neutral-500;
+}
+
+.footer {
+  @apply mt-auto pt-4 px-3;
+}
+
+.collapsedProjectButton {
+  @apply flex h-10 w-10 items-center justify-center rounded-xl border-0 bg-white/5 text-neutral-300 transition-colors hover:bg-white/10;
+}

@@ -1,0 +1,12 @@
+{
+  "editor.formatOnSave": true,
+  "jest.runMode": {
+    "coverage": true,
+    "type": "on-demand"
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.requireConfig": true,
+  "[scss]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

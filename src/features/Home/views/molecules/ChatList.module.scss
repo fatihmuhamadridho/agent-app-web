@@ -1,0 +1,21 @@
+@reference "../../../../styles/globals.css";
+
+.list {
+  @apply flex flex-col gap-1 pl-4;
+}
+
+.item {
+  @apply flex w-full cursor-pointer items-center justify-between gap-3 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-sm text-neutral-400 transition-colors hover:bg-white/5;
+}
+
+.active {
+  @apply bg-white/7 text-white;
+}
+
+.label {
+  @apply m-0 min-w-0 flex-1 truncate font-medium;
+}
+
+.time {
+  @apply m-0 shrink-0 text-xs text-neutral-500;
+}

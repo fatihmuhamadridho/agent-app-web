@@ -1,0 +1,5 @@
+@reference "../../../../styles/globals.css";
+
+.layout {
+  @apply flex h-screen overflow-hidden bg-[#0f0f10];
+}

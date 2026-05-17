@@ -1,0 +1,16 @@
+{
+  "trailingComma": "es5",
+  "tabWidth": 2,
+  "semi": true,
+  "singleQuote": true,
+  "bracketSpacing": true,
+  "printWidth": 120,
+  "overrides": [
+    {
+      "files": "src/core/**/*.{ts,tsx,js,jsx}",
+      "options": {
+        "printWidth": 150
+      }
+    }
+  ]
+}

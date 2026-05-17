@@ -1,0 +1,41 @@
+{
+  "name": "agent-app-web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "prettier": "prettier . --write"
+  },
+  "dependencies": {
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
+    "@openai/codex-sdk": "^0.130.0",
+    "@tabler/icons-react": "^3.44.0",
+    "@tanstack/react-query": "^5.95.2",
+    "axios": "^1.14.0",
+    "cookie": "^1.1.1",
+    "next": "16.2.1",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "sass": "^1.98.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.1",
+    "postcss": "^8.5.8",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
+    "prettier": "3.8.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
