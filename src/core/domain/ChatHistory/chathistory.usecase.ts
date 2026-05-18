@@ -12,6 +12,7 @@ export class GetChatHistoryUseCase {
       sessionId: response.sessionId,
       title: response.title,
       messages: response.messages ?? [],
+      runs: response.runs ?? [],
       totalMessages: response.totalMessages,
       hasMoreBefore: response.hasMoreBefore,
       nextBeforeIndex: response.nextBeforeIndex,

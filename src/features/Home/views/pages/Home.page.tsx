@@ -1,6 +1,11 @@
 import Head from 'next/head';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { useGetSidebarData } from '@features/Home/infrastructure/home.hook';
+import { useMemo, useState } from 'react';
+import {
+  useGetSidebarData,
+  useSidebarCollapsedPersistence,
+  useSidebarCollapsedState,
+  useSidebarCollapsedToggle,
+} from '@features/Home/infrastructure/home.hook';
 import { HomeTemplate } from '../templates/Home.template';
 import type { ChatItemView, ModelVariantView, NavItemView, ProjectGroupView } from '../interfaces/home.interface';
 
@@ -17,50 +22,13 @@ const modelVariants: ModelVariantView[] = [
   { id: 'gpt-5.2', label: '5.2', detail: 'High' },
 ];
 
-const SIDEBAR_COLLAPSED_STORAGE_KEY = 'agent-app-web.sidebar-collapsed';
-
-const notifySidebarCollapsedChange = () => {
-  window.dispatchEvent(new Event('agent-app-web-sidebar-collapsed-change'));
-};
-
-const subscribeToSidebarCollapsed = (onStoreChange: () => void) => {
-  const handleStorageChange = () => onStoreChange();
-
-  window.addEventListener('storage', handleStorageChange);
-  window.addEventListener('agent-app-web-sidebar-collapsed-change', onStoreChange);
-
-  return () => {
-    window.removeEventListener('storage', handleStorageChange);
-    window.removeEventListener('agent-app-web-sidebar-collapsed-change', onStoreChange);
-  };
-};
-
-const getSidebarCollapsedSnapshot = () => {
-  const storedValue = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
-  return storedValue === 'true';
-};
-
-const getSidebarCollapsedServerSnapshot = () => false;
-
 const HomePage = () => {
   const { data } = useGetSidebarData();
   const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>();
   const [selectedModelId, setSelectedModelId] = useState(modelVariants[0].id);
-  const isSidebarCollapsed = useSyncExternalStore(
-    subscribeToSidebarCollapsed,
-    getSidebarCollapsedSnapshot,
-    getSidebarCollapsedServerSnapshot
-  );
-
-  useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(isSidebarCollapsed));
-  }, [isSidebarCollapsed]);
-
-  const handleToggleSidebar = () => {
-    const nextValue = !isSidebarCollapsed;
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(nextValue));
-    notifySidebarCollapsedChange();
-  };
+  const isSidebarCollapsed = useSidebarCollapsedState();
+  useSidebarCollapsedPersistence(isSidebarCollapsed);
+  const handleToggleSidebar = useSidebarCollapsedToggle(isSidebarCollapsed);
 
   const projectGroups: ProjectGroupView[] = useMemo(
     () =>

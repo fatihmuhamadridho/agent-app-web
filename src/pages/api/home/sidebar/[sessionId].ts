@@ -12,7 +12,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const selectedBeforeIndex = Number(Array.isArray(beforeIndex) ? beforeIndex[0] : beforeIndex);
 
   if (!selectedSessionId) {
-    res.status(400).json({ sessionId: '', title: '', messages: [], totalMessages: 0, hasMoreBefore: false, nextBeforeIndex: null });
+    res.status(400).json({
+      sessionId: '',
+      title: '',
+      messages: [],
+      runs: [],
+      totalMessages: 0,
+      hasMoreBefore: false,
+      nextBeforeIndex: null,
+    });
     return;
   }
 
@@ -28,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       sessionId: selectedSessionId,
       title: selectedSessionId,
       messages: [],
+      runs: [],
       totalMessages: 0,
       hasMoreBefore: false,
       nextBeforeIndex: null,

@@ -34,7 +34,9 @@ export type RolloutMessageRow = {
     type?: string;
     text?: string;
     message?: string;
-    content?: Array<{ type?: string; text?: string }>;
+    content?: Array<{ type?: string; text?: string; image_url?: string; url?: string }>;
+    image_url?: string;
+    url?: string;
   };
 };
 
@@ -133,6 +135,14 @@ export const extractContent = (content: Array<{ type?: string; text?: string }> 
     .filter(Boolean)
     .join('\n')
     .trim();
+};
+
+export const extractImages = (content: Array<{ type?: string; image_url?: string; url?: string }> | undefined) => {
+  if (!content?.length) return [];
+
+  return content
+    .map((item) => item.image_url ?? item.url ?? '')
+    .filter((value): value is string => Boolean(value));
 };
 
 export const sanitizePromptText = (value: string) =>

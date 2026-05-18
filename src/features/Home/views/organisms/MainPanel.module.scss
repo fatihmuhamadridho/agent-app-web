@@ -21,7 +21,7 @@
 }
 
 .historyPane {
-  @apply min-h-0 flex-1 overflow-y-auto px-7 py-2 pb-[260px];
+  @apply min-h-0 flex-1 overflow-y-auto px-7 py-2 pb-[150px];
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgb(77 77 77 / 0.95) rgb(20 20 20 / 0.95);
@@ -51,7 +51,39 @@
 }
 
 .composer {
-  @apply absolute bottom-6 left-1/2 z-10 w-[min(760px,calc(100%-3.5rem))] -translate-x-1/2 rounded-3xl border border-white/10 bg-[#2b2b2b] px-4 py-3 shadow-[0_18px_35px_rgba(0,0,0,0.25)];
+  @apply absolute bottom-6 left-1/2 z-10 w-[min(760px,calc(100%-3.5rem))] -translate-x-1/2 rounded-[28px] border border-white/10 bg-[#2b2b2b] px-4 py-3 shadow-[0_18px_35px_rgba(0,0,0,0.25)];
+}
+
+.composerAttachments {
+  @apply mb-3 flex flex-wrap gap-2.5;
+}
+
+.composerAttachment {
+  @apply flex max-w-[240px] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-2 text-slate-100;
+}
+
+.composerAttachmentImageFrame {
+  @apply relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/20;
+}
+
+.composerAttachmentImage {
+  @apply object-cover;
+}
+
+.composerAttachmentFileIcon {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-neutral-300;
+}
+
+.composerAttachmentLabel {
+  @apply min-w-0 flex-1 truncate text-xs text-slate-100;
+}
+
+.composerAttachmentRemove {
+  @apply flex h-5 w-5 items-center justify-center rounded-full border-0 bg-white/10 text-slate-100 transition-colors hover:bg-white/20;
+}
+
+.hiddenFileInput {
+  @apply hidden;
 }
 
 .prompt {
@@ -67,7 +99,7 @@
 }
 
 .composerBar {
-  @apply mt-3 flex items-center justify-between gap-4 border-t border-white/5 pt-3;
+  @apply mt-3 flex items-center justify-between gap-4 pt-3;
 }
 
 .thinkingPanel {
@@ -98,8 +130,40 @@
   @apply h-px w-full bg-white/10;
 }
 
+.thinkingStatus {
+  @apply m-0 text-sm leading-6 text-slate-100;
+}
+
 .toolButton {
   @apply h-auto rounded-full bg-transparent px-0 py-0 text-sm font-medium text-[#ff7a1a] hover:bg-transparent;
+}
+
+.addMenu {
+  @apply relative;
+}
+
+.addButton {
+  @apply flex h-5 w-5 items-center justify-center rounded-sm border-0 bg-transparent text-neutral-400 transition-colors hover:bg-white/5 hover:text-slate-100;
+}
+
+.addDropdown {
+  @apply absolute bottom-[calc(100%+10px)] left-0 z-30 flex w-[210px] flex-col gap-1 rounded-[18px] border border-white/10 bg-[#232323] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.45)];
+}
+
+.addMenuItem {
+  @apply flex w-full items-center gap-2 rounded-lg border-0 bg-transparent px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-white/5;
+}
+
+.addMenuLabel {
+  @apply m-0 flex-1 text-sm text-slate-100;
+}
+
+.menuToggleFake {
+  @apply h-4 w-8 rounded-full bg-white/10;
+}
+
+.menuArrow {
+  @apply text-sm text-neutral-400;
 }
 
 .modelButton {
@@ -182,20 +246,32 @@
   @apply mx-auto flex w-full max-w-[760px] flex-col gap-3;
 }
 
+.messageStack {
+  @apply flex min-w-0 flex-col;
+}
+
+.userStack {
+  @apply ml-auto w-[78%] min-w-0 items-end;
+}
+
+.assistantStack {
+  @apply mr-auto w-[78%] min-w-0 items-start;
+}
+
 .content {
   @apply min-h-0 w-full flex-1 overflow-visible;
 }
 
 .message {
-  @apply max-w-[760px] rounded-2xl border border-white/10 bg-white/[0.03] p-4;
+  @apply max-w-[760px] overflow-hidden rounded-lg border border-white/10 bg-white/[0.03] py-1 px-2;
 }
 
 .user {
-  @apply ml-auto w-[78%];
+  @apply w-full;
 }
 
 .assistant {
-  @apply mr-auto w-[78%];
+  @apply w-full;
 }
 
 .system {
@@ -203,11 +279,104 @@
 }
 
 .messageText {
-  @apply m-0 whitespace-pre-wrap text-sm leading-6 text-slate-100;
+  @apply m-0 whitespace-pre-wrap break-words text-sm leading-6 text-slate-100;
 }
 
 .inlineMessage {
-  @apply m-0 max-w-[760px] whitespace-pre-wrap text-sm leading-6 text-slate-100;
+  @apply m-0 max-w-[760px] break-words text-sm leading-6 text-slate-100;
+}
+
+.messageParagraph {
+  @apply m-0 whitespace-pre-wrap break-words text-sm leading-6 text-slate-100;
+}
+
+.messageSpacer {
+  @apply h-2 w-full;
+}
+
+.messageList,
+.messageNumberList {
+  @apply my-0 flex flex-col gap-1 pl-5 text-sm leading-6 text-slate-100;
+}
+
+.messageList {
+  @apply list-disc;
+}
+
+.messageNumberList {
+  @apply list-decimal;
+}
+
+.messageListItem {
+  @apply whitespace-pre-wrap break-words;
+}
+
+.codeBlock {
+  @apply w-full overflow-hidden rounded-2xl border border-white/10 bg-[#2d2d2d] text-slate-100;
+}
+
+.codeBlockHeader {
+  @apply flex items-center justify-between border-b border-white/10 px-4 py-3;
+}
+
+.codeBlockLanguage {
+  @apply m-0 text-sm font-medium text-neutral-300;
+}
+
+.codeBlockCopy {
+  @apply flex h-7 w-7 items-center justify-center rounded-md border-0 bg-transparent text-neutral-300 transition-colors hover:bg-white/5;
+}
+
+.codeBlockPre {
+  @apply m-0 overflow-x-auto px-4 py-3 text-sm leading-6 text-slate-100;
+}
+
+.codeBlockCode {
+  @apply block whitespace-pre font-mono text-[0.9rem] leading-6 text-slate-100;
+}
+
+.fileLine {
+  @apply flex items-center gap-2 whitespace-nowrap text-sky-300;
+}
+
+.fileLineIcon {
+  @apply shrink-0 text-sky-300;
+}
+
+.fileLineLabel {
+  @apply m-0 min-w-0 truncate text-sm font-medium text-sky-300;
+}
+
+.inlineCode {
+  @apply rounded-md bg-white/10 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-100;
+}
+
+.messageImages {
+  @apply flex flex-wrap gap-3;
+}
+
+.messageImageFrameButton {
+  @apply border-0 bg-transparent p-0;
+}
+
+.messageImageFrame {
+  @apply relative h-[94px] w-[120px] overflow-hidden rounded-2xl border border-white/10 bg-black/20 shadow-[0_10px_24px_rgba(0,0,0,0.25)];
+}
+
+.messageImage {
+  @apply object-cover;
+}
+
+.imagePreviewOverlay {
+  @apply fixed inset-0 z-40 flex items-center justify-center bg-black/80 px-4;
+}
+
+.imagePreviewFrameLarge {
+  @apply relative h-[min(72vh,680px)] w-[min(72vw,960px)] overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-[0_25px_60px_rgba(0,0,0,0.55)];
+}
+
+.imagePreview {
+  @apply object-contain;
 }
 
 .suggestionRow {
@@ -216,4 +385,260 @@
 
 .suggestionText {
   @apply m-0 text-sm;
+}
+
+.streamRunDetails {
+  @apply rounded-2xl border border-white/10 bg-white/[0.03] text-slate-100;
+}
+
+.streamRunSummary {
+  @apply flex cursor-pointer list-none items-center justify-between gap-4 p-4;
+}
+
+.streamRunSummary::-webkit-details-marker {
+  display: none;
+}
+
+.streamRunSummaryText {
+  @apply flex min-w-0 flex-1 flex-col gap-1;
+}
+
+.streamRunSummaryIcon {
+  @apply shrink-0 text-neutral-400 transition-transform duration-200;
+}
+
+.streamRunDetails[open] .streamRunSummaryIcon {
+  @apply rotate-180;
+}
+
+.streamRunBody {
+  @apply flex flex-col gap-4 border-t border-white/10 p-4 pt-3;
+}
+
+.streamRunTitle {
+  @apply m-0 text-sm font-semibold text-slate-100;
+}
+
+.streamRunMeta {
+  @apply flex flex-wrap gap-2;
+}
+
+.streamRunMetaText {
+  @apply m-0 text-xs text-neutral-400;
+}
+
+.streamRunSection {
+  @apply flex flex-col gap-2 pt-1;
+}
+
+.streamRunSectionTitle {
+  @apply m-0 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500;
+}
+
+.streamRunLine {
+  @apply m-0 whitespace-pre-wrap break-words rounded-xl border border-white/5 bg-black/10 px-3 py-2 text-sm leading-6 text-slate-100;
+}
+
+.streamRunLineMuted {
+  @apply m-0 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-400;
+}
+
+.streamCommandCard {
+  @apply rounded-2xl border border-white/10 bg-[#1f1f1f] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)];
+}
+
+.streamCommandHeader {
+  @apply flex items-center justify-between gap-3;
+}
+
+.streamCommandTitle {
+  @apply m-0 text-sm font-medium text-slate-100;
+}
+
+.streamCommandStatus {
+  @apply m-0 text-xs font-medium text-neutral-400;
+}
+
+.streamCommandShell {
+  @apply flex flex-col gap-2 rounded-2xl border border-white/10 bg-[#161616] p-4;
+}
+
+.streamCommandShellLabel {
+  @apply m-0 text-xs uppercase tracking-[0.12em] text-neutral-500;
+}
+
+.streamCommandShellCommand {
+  @apply m-0 whitespace-pre-wrap break-words font-mono text-[0.85rem] leading-6 text-slate-100;
+}
+
+.streamCommandOutput {
+  @apply m-0 whitespace-pre-wrap break-words rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-mono text-[0.82rem] leading-6 text-slate-200;
+}
+
+.streamCommandExit {
+  @apply m-0 text-xs text-neutral-500;
+}
+
+.streamCommandOutputBlock {
+  @apply flex flex-col gap-2;
+}
+
+.streamCommandOutputLabel {
+  @apply m-0 text-xs uppercase tracking-[0.12em] text-neutral-500;
+}
+
+.streamFileCard {
+  @apply rounded-2xl border border-white/10 bg-[#1f1f1f] p-4 shadow-[0_10px_24px_rgba(0,0,0,0.2)];
+}
+
+.streamFileHeader {
+  @apply flex items-center justify-between gap-3;
+}
+
+.streamFileTitle {
+  @apply m-0 text-sm font-medium text-slate-100;
+}
+
+.streamFileStatus {
+  @apply m-0 text-xs font-medium text-neutral-400;
+}
+
+.streamFilePath {
+  @apply m-0 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 font-mono text-[0.82rem] leading-6 text-slate-200;
+}
+
+.streamRunDetails {
+  @apply rounded-none border-0 bg-transparent;
+}
+
+.streamRunSummary {
+  @apply items-start justify-start gap-2 border-t border-white/10 px-0 py-4;
+}
+
+.streamRunSummaryText {
+  @apply flex-row items-center gap-2;
+}
+
+.streamRunSummaryIcon {
+  @apply mt-0.5 text-neutral-500;
+}
+
+.streamRunBody {
+  @apply gap-4 border-t-0 px-0 pb-2 pt-0;
+}
+
+.streamRunTitle {
+  @apply text-[1.05rem] font-medium text-neutral-300;
+}
+
+.streamActivityRow {
+  @apply m-0 text-sm leading-6 text-neutral-400;
+}
+
+.streamActivityRowMuted {
+  @apply m-0 text-xs leading-5 text-neutral-500;
+}
+
+.streamNarrative {
+  @apply m-0 flex flex-col gap-3 text-sm leading-7 text-slate-100;
+}
+
+.streamNarrative :global(.mantine-Text-root) {
+  @apply text-sm leading-7 text-slate-100;
+}
+
+.streamCompactedDivider {
+  @apply flex items-center gap-3 py-2;
+}
+
+.streamCompactedLine {
+  @apply h-px flex-1 bg-white/10;
+}
+
+.streamCompactedLabel {
+  @apply m-0 text-xs text-neutral-500;
+}
+
+.streamCommandDisclosure {
+  @apply flex flex-col gap-2;
+}
+
+.streamCommandSummary {
+  @apply flex cursor-pointer list-none items-center gap-2 py-1 text-sm text-neutral-400;
+}
+
+.streamCommandSummary::-webkit-details-marker {
+  display: none;
+}
+
+.streamCommandSummaryText {
+  @apply m-0 text-sm text-neutral-400;
+}
+
+.streamCommandSummaryIcon {
+  @apply text-neutral-500 transition-transform duration-200;
+}
+
+.streamCommandDisclosure[open] .streamCommandSummaryIcon {
+  @apply rotate-180;
+}
+
+.streamCommandCard {
+  @apply rounded-2xl border border-white/10 bg-[#2b2b2b] p-4 shadow-none;
+}
+
+.streamCommandHeader {
+  @apply items-center;
+}
+
+.streamCommandTitle {
+  @apply text-sm font-medium text-neutral-300;
+}
+
+.streamCommandStatus {
+  @apply text-xs text-neutral-400;
+}
+
+.streamCommandShell {
+  @apply gap-3 rounded-2xl border-0 bg-[#303030] p-4;
+}
+
+.streamCommandShellCommand {
+  @apply whitespace-pre-wrap break-words font-mono text-[0.9rem] leading-7 text-slate-100;
+}
+
+.streamCommandOutputBlock {
+  @apply rounded-2xl border-0 bg-[#202020] px-4 py-3;
+}
+
+.streamCommandOutput {
+  @apply rounded-none border-0 bg-transparent px-0 py-0 text-[0.84rem] leading-7 text-slate-300;
+}
+
+.streamCommandExit {
+  @apply text-xs text-neutral-500;
+}
+
+.streamFileTimelineItem {
+  @apply flex flex-col gap-2;
+}
+
+.streamFileTimelineLabel {
+  @apply m-0 text-sm text-neutral-400;
+}
+
+.streamFileCard {
+  @apply rounded-2xl border border-white/10 bg-[#202020] p-4 shadow-none;
+}
+
+.streamFileHeader {
+  @apply flex-col items-start gap-2;
+}
+
+.streamFileTitle {
+  @apply whitespace-pre-wrap break-all font-mono text-[0.84rem] leading-7 text-slate-200;
+}
+
+.streamFileStatus {
+  @apply text-xs text-neutral-500;
 }
