@@ -12,13 +12,9 @@ import {
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from 'react';
 import { useGetChatHistory } from '@features/Home/infrastructure/home.hook';
-import type {
-  ChatHistoryRunView,
-  ChatMessageView,
-  ModelVariantView,
-} from '../interfaces/home.interface';
+import type { ChatHistoryRunView, ChatMessageView, ModelVariantView } from '../interfaces/home.interface';
 import styles from './MainPanel.module.scss';
 
 type MainPanelProps = {
@@ -36,9 +32,7 @@ type MessageLine =
 
 type InlineNode = { type: 'text'; content: string } | { type: 'code'; content: string };
 
-type AssistantBlock =
-  | { type: 'text'; content: string }
-  | { type: 'code'; language: string; content: string };
+type AssistantBlock = { type: 'text'; content: string } | { type: 'code'; language: string; content: string };
 
 type ComposerAttachment = {
   id: string;
@@ -388,7 +382,7 @@ export const MainPanel = ({
   const handlePreviewImage = (image: string) => {
     setPreviewImage(image);
   };
-  const handleAddAttachments = (files: FileList | null) => {
+  const handleAddAttachments = (files: FileList | File[] | null) => {
     if (!files?.length) return;
 
     void (async () => {
@@ -415,6 +409,14 @@ export const MainPanel = ({
       }
     })();
   };
+  const handleComposerPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedFiles = Array.from(event.clipboardData.files ?? []).filter((file) => file.size > 0);
+
+    if (!pastedFiles.length) return;
+
+    event.preventDefault();
+    handleAddAttachments(pastedFiles);
+  };
   const handleRemoveAttachment = (attachmentId: string) => {
     setComposerAttachments((current) => {
       const next = current.filter((attachment) => attachment.id !== attachmentId);
@@ -426,6 +428,8 @@ export const MainPanel = ({
     });
   };
   const historyPaneRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
   const addMenuRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const modelPickerRef = useRef<HTMLDivElement | null>(null);
@@ -442,7 +446,9 @@ export const MainPanel = ({
   const baseRuns = useMemo(() => chatHistoryData?.runs ?? [], [chatHistoryData?.runs]);
   const displayedLocalMessages = useMemo(() => {
     const seenMessages = new Set(
-      [...olderMessages, ...baseMessages].map((message) => `${message.role}|${message.content}|${message.images?.join('||') ?? ''}`)
+      [...olderMessages, ...baseMessages].map(
+        (message) => `${message.role}|${message.content}|${message.images?.join('||') ?? ''}`
+      )
     );
 
     return localMessages.filter((message) => {
@@ -790,13 +796,54 @@ export const MainPanel = ({
   }, [chatHistoryData, selectedSessionId]);
 
   useEffect(() => {
+    shouldScrollToBottomRef.current = true;
+  }, [selectedSessionId]);
+
+  useEffect(() => {
+    const composer = composerRef.current;
+    const historyPane = historyPaneRef.current;
+    const body = bodyRef.current;
+    if (!composer || !historyPane || !body) return;
+
+    const updateBottomBuffer = () => {
+      const composerHeight = Math.ceil(composer.getBoundingClientRect().height);
+      const composerFootprint = composerHeight + 24;
+      body.style.setProperty('--composer-footprint', `${composerFootprint}px`);
+      historyPane.style.setProperty('--history-pane-bottom-buffer', '16px');
+    };
+
+    updateBottomBuffer();
+
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(updateBottomBuffer);
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, [composerAttachments.length, draftPrompt, isAddMenuOpen, isModelMenuOpen]);
+
+  useEffect(() => {
+    if (!previewImage) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewImage(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [previewImage]);
+
+  useLayoutEffect(() => {
     if (!shouldScrollToBottomRef.current) return;
     const container = historyPaneRef.current;
     if (!container) return;
 
     container.scrollTop = container.scrollHeight;
-    shouldScrollToBottomRef.current = false;
-  }, [baseMessages.length, localMessages.length, selectedSessionId]);
+    if (container.scrollHeight > container.clientHeight) {
+      shouldScrollToBottomRef.current = false;
+    }
+  }, [baseMessages.length, localMessages.length, selectedSessionId, chatHistoryData]);
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -1259,7 +1306,7 @@ export const MainPanel = ({
         <Box className={styles.toolbarDot} />
       </Box>
 
-      <Stack className={styles.body} gap={0}>
+      <Stack className={styles.body} gap={0} ref={bodyRef}>
         <Box
           className={styles.historyPane}
           ref={historyPaneRef}
@@ -1288,16 +1335,16 @@ export const MainPanel = ({
                       ? segment.runItems.map((runItem) => renderRunBlock(runItem.run, runItem.durationText))
                       : null}
 
-                    {segment.assistantMessages.length ? (
-                      segment.assistantMessages.map((message) => (
-                        <Stack key={message.id} className={`${styles.messageStack} ${styles.assistantStack}`} gap={6}>
-                          {renderMessageImages(message.id, message.images, handlePreviewImage)}
-                          <Box className={`${styles.inlineMessage} ${styles[message.role]}`}>
-                            {renderAssistantContent(message.content)}
-                          </Box>
-                        </Stack>
-                      ))
-                    ) : null}
+                    {segment.assistantMessages.length
+                      ? segment.assistantMessages.map((message) => (
+                          <Stack key={message.id} className={`${styles.messageStack} ${styles.assistantStack}`} gap={6}>
+                            {renderMessageImages(message.id, message.images, handlePreviewImage)}
+                            <Box className={`${styles.inlineMessage} ${styles[message.role]}`}>
+                              {renderAssistantContent(message.content)}
+                            </Box>
+                          </Stack>
+                        ))
+                      : null}
                   </Stack>
                 ))}
                 {isSubmitting ? (
@@ -1313,7 +1360,7 @@ export const MainPanel = ({
                 {[
                   'Build an image annotation tool',
                   'Build a browser mini-game',
-                  'Connect Browser, GitHub, Linear, and more to Codex',
+                  'Connect Browser, GitHub, Linear, and more',
                 ].map((item) => (
                   <Box key={item} className={styles.suggestionRow}>
                     <Text className={styles.suggestionText}>{item}</Text>
@@ -1336,13 +1383,20 @@ export const MainPanel = ({
           </Box>
         ) : null}
 
-        <Box className={styles.composer}>
+        <Box className={styles.composer} ref={composerRef}>
           {composerAttachments.length ? (
             <Box className={styles.composerAttachments}>
               {composerAttachments.map((attachment) => (
-                <Box key={attachment.id} className={styles.composerAttachment}>
+                <Box
+                  key={attachment.id}
+                  className={attachment.isImage ? styles.composerImageAttachment : styles.composerAttachment}
+                >
                   {attachment.isImage && attachment.previewUrl ? (
-                    <Box className={styles.composerAttachmentImageFrame}>
+                    <Box
+                      className={styles.composerAttachmentImageFrame}
+                      onClick={() => setPreviewImage(attachment.previewUrl)}
+                      role="presentation"
+                    >
                       <Image
                         className={styles.composerAttachmentImage}
                         src={attachment.previewUrl}
@@ -1350,21 +1404,33 @@ export const MainPanel = ({
                         fill
                         unoptimized
                       />
+                      <button
+                        type="button"
+                        className={styles.composerImageAttachmentRemove}
+                        aria-label={`Remove ${attachment.file.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleRemoveAttachment(attachment.id);
+                        }}
+                      >
+                        <IconX size={12} />
+                      </button>
                     </Box>
                   ) : (
                     <Box className={styles.composerAttachmentFileIcon}>
                       <IconFileText size={14} />
                     </Box>
                   )}
-                  <Text className={styles.composerAttachmentLabel}>{attachment.file.name}</Text>
-                  <button
-                    type="button"
-                    className={styles.composerAttachmentRemove}
-                    aria-label={`Remove ${attachment.file.name}`}
-                    onClick={() => handleRemoveAttachment(attachment.id)}
-                  >
-                    <IconX size={12} />
-                  </button>
+                  {!attachment.isImage ? (
+                    <button
+                      type="button"
+                      className={styles.composerAttachmentRemove}
+                      aria-label={`Remove ${attachment.file.name}`}
+                      onClick={() => handleRemoveAttachment(attachment.id)}
+                    >
+                      <IconX size={12} />
+                    </button>
+                  ) : null}
                 </Box>
               ))}
             </Box>
@@ -1385,9 +1451,10 @@ export const MainPanel = ({
             autosize
             minRows={1}
             maxRows={6}
-            placeholder="Ask Codex anything. @ to use plugins or mention files"
+            placeholder="Ask anything. @ to use plugins or mention files"
             value={draftPrompt}
             onChange={(event) => setDraftPrompt(event.currentTarget.value)}
+            onPaste={handleComposerPaste}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -1410,11 +1477,7 @@ export const MainPanel = ({
 
                 {isAddMenuOpen ? (
                   <Box className={styles.addDropdown}>
-                    <button
-                      type="button"
-                      className={styles.addMenuItem}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
+                    <button type="button" className={styles.addMenuItem} onClick={() => fileInputRef.current?.click()}>
                       <IconPaperclip size={14} />
                       <Text className={styles.addMenuLabel}>Add photos &amp; files</Text>
                     </button>

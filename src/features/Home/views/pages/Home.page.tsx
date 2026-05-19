@@ -67,7 +67,7 @@ const HomePage = () => {
     <>
       <Head>
         <title>Home | agent-app-web</title>
-        <meta name="description" content="Codex-style home dashboard shell" />
+        <meta name="description" content="Agent-style home dashboard shell" />
       </Head>
       <HomeTemplate
         navItems={navItems}

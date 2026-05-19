@@ -1,7 +1,7 @@
 @reference "../../../../styles/globals.css";
 
 .panel {
-  @apply relative flex flex-1 flex-col items-stretch justify-center overflow-hidden bg-[#121212] text-slate-100;
+  @apply relative flex h-full min-h-0 flex-1 flex-col items-stretch justify-start overflow-hidden bg-[#121212] text-slate-100;
 }
 
 .toolbar {
@@ -17,11 +17,13 @@
 }
 
 .body {
-  @apply relative flex min-h-0 flex-1 flex-col pb-4;
+  padding-bottom: var(--composer-footprint, 96px);
+  @apply relative flex min-h-0 flex-1 flex-col overflow-hidden;
 }
 
 .historyPane {
-  @apply min-h-0 flex-1 overflow-y-auto px-7 py-2 pb-[150px];
+  padding-bottom: var(--history-pane-bottom-buffer, 16px);
+  @apply min-h-0 flex-1 overflow-y-auto px-7 py-2;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgb(77 77 77 / 0.95) rgb(20 20 20 / 0.95);
@@ -55,15 +57,19 @@
 }
 
 .composerAttachments {
-  @apply mb-3 flex flex-wrap gap-2.5;
+  @apply mb-3 flex flex-wrap items-start gap-3;
 }
 
 .composerAttachment {
   @apply flex max-w-[240px] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-2 py-2 text-slate-100;
 }
 
+.composerImageAttachment {
+  @apply flex w-[84px] shrink-0 flex-col items-start gap-2 text-slate-100;
+}
+
 .composerAttachmentImageFrame {
-  @apply relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/20;
+  @apply relative h-[74px] w-[74px] shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black/20 shadow-[0_8px_20px_rgba(0,0,0,0.28)] cursor-pointer;
 }
 
 .composerAttachmentImage {
@@ -74,12 +80,12 @@
   @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/20 text-neutral-300;
 }
 
-.composerAttachmentLabel {
-  @apply min-w-0 flex-1 truncate text-xs text-slate-100;
-}
-
 .composerAttachmentRemove {
   @apply flex h-5 w-5 items-center justify-center rounded-full border-0 bg-white/10 text-slate-100 transition-colors hover:bg-white/20;
+}
+
+.composerImageAttachmentRemove {
+  @apply absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-900 shadow-[0_4px_12px_rgba(0,0,0,0.24)] transition-transform transition-colors hover:scale-105 hover:bg-neutral-100 cursor-pointer;
 }
 
 .hiddenFileInput {
