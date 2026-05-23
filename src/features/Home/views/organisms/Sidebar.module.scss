@@ -16,6 +16,10 @@
   @apply mb-5 px-3 pt-10;
 }
 
+.navButton {
+  @apply w-full cursor-pointer border-0 bg-transparent p-0 text-left;
+}
+
 .scrollArea {
   @apply flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pr-1;
   scrollbar-gutter: stable;

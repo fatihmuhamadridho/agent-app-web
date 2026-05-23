@@ -12,8 +12,13 @@ import {
 } from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useGetChatHistory } from '@features/Home/infrastructure/home.hook';
+import {
+  clearPendingPromptHandoff,
+  getPendingPromptHandoff,
+  savePendingPromptHandoff,
+} from '@features/Home/infrastructure/home.pending-prompt';
 import type { ChatHistoryRunView, ChatMessageView, ModelVariantView } from '../interfaces/home.interface';
 import styles from './MainPanel.module.scss';
 
@@ -536,6 +541,23 @@ export const MainPanel = ({
     return userSegments;
   }, [displayedMessages, displayedRuns]);
 
+  const leadingAssistantMessages = useMemo(
+    () =>
+      (() => {
+        const messages: ChatMessageView[] = [];
+        for (const message of displayedMessages) {
+          if (message.role === 'user') {
+            break;
+          }
+          if (message.role === 'assistant') {
+            messages.push(message);
+          }
+        }
+        return messages;
+      })(),
+    [displayedMessages]
+  );
+
   const renderLegacyRunBlock = (run: ChatHistoryRunView, durationText: string) => (
     <details key={run.id} className={styles.streamRunDetails}>
       <summary className={styles.streamRunSummary}>
@@ -762,16 +784,16 @@ export const MainPanel = ({
     );
   };
 
-  const updateRunDraft = (updater: (current: ChatHistoryRunView) => ChatHistoryRunView) => {
+  const updateRunDraft = useCallback((updater: (current: ChatHistoryRunView) => ChatHistoryRunView) => {
     setStreamRunDraft((current) => (current ? updater(current) : current));
-  };
+  }, []);
 
-  const appendRunStepDraft = (step: ChatHistoryRunView['steps'][number]) => {
+  const appendRunStepDraft = useCallback((step: ChatHistoryRunView['steps'][number]) => {
     updateRunDraft((current) => ({
       ...current,
       steps: [...current.steps.filter((item) => item.id !== step.id), step],
     }));
-  };
+  }, [updateRunDraft]);
 
   useEffect(() => {
     composerAttachmentsRef.current = composerAttachments;
@@ -907,6 +929,340 @@ export const MainPanel = ({
     }
   };
 
+  const clearComposerAttachments = () => {
+    composerAttachmentsRef.current.forEach((attachment) => {
+      if (attachment.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+    });
+    setComposerAttachments([]);
+  };
+
+  const buildInitialRunDraft = (runId: string, startedAt: number, detail: string) => ({
+    id: runId,
+    status: 'running' as const,
+    startedAt,
+    endedAt: null,
+    steps: [
+      {
+        id: createRunStepId(runId, 'run.started', startedAt),
+        type: 'run.started' as const,
+        label: 'Run started',
+        detail,
+        timestamp: startedAt,
+      },
+    ],
+    commands: [],
+    files: [],
+    assistantMessages: [],
+  });
+
+  const startPromptStream = useCallback(({
+    jobId,
+    streamSessionId,
+    startedAt,
+  }: {
+    jobId: string;
+    streamSessionId?: string;
+    startedAt: number;
+  }) => {
+    streamRunIdRef.current = jobId;
+    setStreamRunDraft(buildInitialRunDraft(jobId, startedAt, streamSessionId ?? selectedSessionId ?? 'new session'));
+
+    const eventSource = new EventSource(`/api/home/prompt/stream?jobId=${encodeURIComponent(jobId)}`);
+    streamEventSourceRef.current = eventSource;
+
+    eventSource.addEventListener('run.started', (event) => {
+      JSON.parse((event as MessageEvent).data as string);
+    });
+
+    eventSource.addEventListener('turn.started', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        sessionId?: string;
+      };
+      appendRunStepDraft({
+        id: createRunStepId(jobId, 'turn.started', Date.now()),
+        type: 'turn.started',
+        label: 'Turn started',
+        detail: 'assistant is processing the prompt',
+        timestamp: Date.now(),
+      });
+      if (payload.sessionId && payload.sessionId !== selectedSessionId) {
+        onSelectSession?.(payload.sessionId);
+      }
+    });
+
+    eventSource.addEventListener('item.started', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        item?: { type?: string };
+        sessionId?: string;
+      };
+      const itemType = payload.item?.type ?? 'unknown';
+      appendRunStepDraft({
+        id: createRunStepId(jobId, `item.started-${itemType}`, Date.now()),
+        type: 'item.started',
+        label:
+          itemType === 'command_execution'
+            ? 'Command started'
+            : itemType === 'file_change'
+              ? 'File change started'
+              : 'Item started',
+        detail: itemType,
+        timestamp: Date.now(),
+      });
+      if (payload.sessionId && payload.sessionId !== selectedSessionId) {
+        onSelectSession?.(payload.sessionId);
+      }
+    });
+
+    eventSource.addEventListener('item.updated', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        item?: { type?: string };
+        sessionId?: string;
+      };
+      const itemType = payload.item?.type ?? 'unknown';
+      appendRunStepDraft({
+        id: createRunStepId(jobId, `item.updated-${itemType}`, Date.now()),
+        type: 'item.updated',
+        label:
+          itemType === 'command_execution'
+            ? 'Command updated'
+            : itemType === 'file_change'
+              ? 'File change updated'
+              : 'Item updated',
+        detail: itemType,
+        timestamp: Date.now(),
+      });
+      if (payload.sessionId && payload.sessionId !== selectedSessionId) {
+        onSelectSession?.(payload.sessionId);
+      }
+    });
+
+    eventSource.addEventListener('item.completed', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        item?: { type?: string };
+        sessionId?: string;
+      };
+      const itemType = payload.item?.type ?? 'unknown';
+      appendRunStepDraft({
+        id: createRunStepId(jobId, `item.completed-${itemType}`, Date.now()),
+        type: 'item.completed',
+        label:
+          itemType === 'command_execution'
+            ? 'Command completed'
+            : itemType === 'file_change'
+              ? 'File change completed'
+              : 'Item completed',
+        detail: itemType,
+        timestamp: Date.now(),
+      });
+      if (payload.sessionId && payload.sessionId !== selectedSessionId) {
+        onSelectSession?.(payload.sessionId);
+      }
+    });
+
+    eventSource.addEventListener('tool.command.started', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        command?: string;
+      };
+      pushStreamActivity({
+        type: 'tool.command.started',
+        label: 'Command started',
+        command: payload.command ?? '',
+        detail: payload.command ?? '',
+        status: 'in_progress',
+      });
+    });
+
+    eventSource.addEventListener('tool.command.completed', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        command?: string;
+        status?: string;
+        exitCode?: number;
+        output?: string;
+      };
+      pushStreamActivity({
+        type: 'tool.command.completed',
+        label: 'Command completed',
+        command: payload.command ?? '',
+        detail: [payload.command, payload.status, payload.exitCode].filter(Boolean).join(' â€¢ '),
+        status: payload.status === 'failed' ? 'failed' : 'completed',
+        output: payload.output,
+        exitCode: payload.exitCode,
+      });
+    });
+
+    eventSource.addEventListener('file.created', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        path?: string;
+      };
+      pushStreamActivity({
+        type: 'file.created',
+        label: 'File created',
+        path: payload.path ?? '',
+        detail: payload.path ?? '',
+      });
+    });
+
+    eventSource.addEventListener('file.updated', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        path?: string;
+      };
+      pushStreamActivity({
+        type: 'file.updated',
+        label: 'File updated',
+        path: payload.path ?? '',
+        detail: payload.path ?? '',
+      });
+    });
+
+    eventSource.addEventListener('chat.update', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        sessionId?: string;
+        text?: string;
+      };
+
+      if (payload.sessionId && payload.sessionId !== selectedSessionId) {
+        onSelectSession?.(payload.sessionId);
+      }
+
+      if (streamAssistantMessageIdRef.current) {
+        setLocalMessages((current) =>
+          current.map((message) =>
+            message.id === streamAssistantMessageIdRef.current ? { ...message, content: payload.text ?? message.content } : message
+          )
+        );
+      }
+
+      shouldScrollToBottomRef.current = true;
+    });
+
+    eventSource.addEventListener('chat.done', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        sessionId?: string;
+        text?: string;
+      };
+
+      if (streamAssistantMessageIdRef.current) {
+        setLocalMessages((current) =>
+          current.map((message) =>
+            message.id === streamAssistantMessageIdRef.current ? { ...message, content: payload.text ?? message.content } : message
+          )
+        );
+      }
+
+      if (payload.sessionId && payload.sessionId !== selectedSessionId) {
+        onSelectSession?.(payload.sessionId);
+      }
+
+      if (payload.sessionId) {
+        clearPendingPromptHandoff(payload.sessionId);
+      }
+
+      pushStreamActivity({
+        type: 'chat.done',
+        label: 'Run completed',
+        detail: payload.sessionId ?? 'session updated',
+      });
+      eventSource.close();
+      if (streamEventSourceRef.current === eventSource) {
+        streamEventSourceRef.current = null;
+      }
+      streamAssistantMessageIdRef.current = null;
+      shouldScrollToBottomRef.current = true;
+      setStreamRunDraft(null);
+      setIsSubmitting(false);
+      void queryClient.invalidateQueries({ queryKey: ['home-chat-history', payload.sessionId ?? selectedSessionId] });
+    });
+
+    eventSource.addEventListener('chat.error', (event) => {
+      const payload = JSON.parse((event as MessageEvent).data as string) as {
+        message?: string;
+        sessionId?: string;
+      };
+
+      eventSource.close();
+      if (streamEventSourceRef.current === eventSource) {
+        streamEventSourceRef.current = null;
+      }
+      if (payload.sessionId) {
+        clearPendingPromptHandoff(payload.sessionId);
+      }
+      pushStreamActivity({
+        type: 'chat.error',
+        label: 'Run failed',
+        detail: payload.message ?? 'unknown error',
+      });
+      const assistantMessageId = streamAssistantMessageIdRef.current;
+      streamAssistantMessageIdRef.current = null;
+      if (assistantMessageId) {
+        setLocalMessages((current) => current.filter((message) => message.id !== assistantMessageId));
+      }
+      setLocalMessages((current) => [
+        ...current,
+        {
+          id: `${selectedSessionId ?? 'new'}-error-${Date.now()}`,
+          role: 'system',
+          content: payload.message ?? 'Failed to stream prompt',
+        },
+      ]);
+      setStreamRunDraft(null);
+      setIsSubmitting(false);
+      void queryClient.invalidateQueries({ queryKey: ['home-chat-history', payload.sessionId ?? selectedSessionId] });
+    });
+
+    eventSource.onerror = () => {
+      eventSource.close();
+      if (streamEventSourceRef.current === eventSource) {
+        streamEventSourceRef.current = null;
+      }
+      if (streamSessionId) {
+        clearPendingPromptHandoff(streamSessionId);
+      }
+      pushStreamActivity({
+        type: 'chat.error',
+        label: 'Stream closed',
+        detail: 'unexpectedly',
+      });
+      const assistantMessageId = streamAssistantMessageIdRef.current;
+      streamAssistantMessageIdRef.current = null;
+      if (assistantMessageId) {
+        setLocalMessages((current) => current.filter((message) => message.id !== assistantMessageId));
+      }
+      setLocalMessages((current) => [
+        ...current,
+        {
+          id: `${selectedSessionId ?? 'new'}-error-${Date.now()}`,
+          role: 'system',
+          content: 'SSE connection closed unexpectedly',
+        },
+      ]);
+      setStreamRunDraft(null);
+      setIsSubmitting(false);
+      void queryClient.invalidateQueries({ queryKey: ['home-chat-history', selectedSessionId] });
+    };
+  }, [appendRunStepDraft, onSelectSession, queryClient, selectedSessionId]);
+
+  useEffect(() => {
+    if (!selectedSessionId || streamEventSourceRef.current) return;
+
+    const pendingPrompt = getPendingPromptHandoff(selectedSessionId);
+    if (!pendingPrompt) return;
+
+    const resumePendingPrompt = window.requestAnimationFrame(() => {
+      streamAssistantMessageIdRef.current = pendingPrompt.assistantMessage.id;
+      setLocalMessages([pendingPrompt.userMessage as ChatMessageView, pendingPrompt.assistantMessage as ChatMessageView]);
+      setIsSubmitting(true);
+      startPromptStream({
+        jobId: pendingPrompt.jobId,
+        streamSessionId: pendingPrompt.sessionId,
+        startedAt: pendingPrompt.startedAt,
+      });
+    });
+
+    return () => window.cancelAnimationFrame(resumePendingPrompt);
+  }, [selectedSessionId, startPromptStream]);
+
   const handleSubmitPrompt = async () => {
     const prompt = draftPrompt.trim();
     if ((!prompt && composerAttachments.length === 0) || isSubmitting) return;
@@ -935,12 +1291,7 @@ export const MainPanel = ({
       },
     ]);
     setDraftPrompt('');
-    composerAttachments.forEach((attachment) => {
-      if (attachment.previewUrl) {
-        URL.revokeObjectURL(attachment.previewUrl);
-      }
-    });
-    setComposerAttachments([]);
+    clearComposerAttachments();
     setIsSubmitting(true);
 
     try {
@@ -960,303 +1311,41 @@ export const MainPanel = ({
         }),
       });
 
-      const data = (await response.json()) as { jobId?: string };
+      const data = (await response.json()) as { jobId?: string; sessionId?: string };
 
       if (!response.ok) {
         throw new Error('Failed to queue prompt');
       }
 
-      if (!data.jobId) {
+      if (!data.jobId || !data.sessionId) {
         throw new Error('Failed to start prompt stream');
       }
 
-      const runId = data.jobId;
-      streamRunIdRef.current = runId;
-      setStreamRunDraft({
-        id: runId,
-        status: 'running',
-        startedAt: Date.now(),
-        endedAt: null,
-        steps: [
-          {
-            id: createRunStepId(runId, 'run.started', Date.now()),
-            type: 'run.started',
-            label: 'Run started',
-            detail: selectedSessionId ?? 'new session',
-            timestamp: Date.now(),
+      const startedAt = Date.now();
+      if (!selectedSessionId) {
+        savePendingPromptHandoff({
+          jobId: data.jobId,
+          sessionId: data.sessionId,
+          runId: data.jobId,
+          startedAt,
+          userMessage: nextMessage,
+          assistantMessage: {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '',
           },
-        ],
-        commands: [],
-        files: [],
-        assistantMessages: [],
-      });
-
-      const eventSource = new EventSource(`/api/home/prompt/stream?jobId=${encodeURIComponent(data.jobId)}`);
-      streamEventSourceRef.current = eventSource;
-
-      eventSource.addEventListener('run.started', (event) => {
-        JSON.parse((event as MessageEvent).data as string);
-      });
-
-      eventSource.addEventListener('turn.started', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          sessionId?: string;
-        };
-        appendRunStepDraft({
-          id: createRunStepId(runId, 'turn.started', Date.now()),
-          type: 'turn.started',
-          label: 'Turn started',
-          detail: 'assistant is processing the prompt',
-          timestamp: Date.now(),
         });
-        if (payload.sessionId && payload.sessionId !== selectedSessionId) {
-          onSelectSession?.(payload.sessionId);
-        }
+        onSelectSession?.(data.sessionId);
+        return;
+      }
+
+      startPromptStream({
+        jobId: data.jobId,
+        streamSessionId: data.sessionId,
+        startedAt,
       });
+      return;
 
-      eventSource.addEventListener('item.started', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          item?: { type?: string };
-          sessionId?: string;
-        };
-        const itemType = payload.item?.type ?? 'unknown';
-        appendRunStepDraft({
-          id: createRunStepId(runId, `item.started-${itemType}`, Date.now()),
-          type: 'item.started',
-          label:
-            itemType === 'command_execution'
-              ? 'Command started'
-              : itemType === 'file_change'
-                ? 'File change started'
-                : 'Item started',
-          detail: itemType,
-          timestamp: Date.now(),
-        });
-        if (payload.sessionId && payload.sessionId !== selectedSessionId) {
-          onSelectSession?.(payload.sessionId);
-        }
-      });
-
-      eventSource.addEventListener('item.updated', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          item?: { type?: string };
-          sessionId?: string;
-        };
-        const itemType = payload.item?.type ?? 'unknown';
-        appendRunStepDraft({
-          id: createRunStepId(runId, `item.updated-${itemType}`, Date.now()),
-          type: 'item.updated',
-          label:
-            itemType === 'command_execution'
-              ? 'Command updated'
-              : itemType === 'file_change'
-                ? 'File change updated'
-                : 'Item updated',
-          detail: itemType,
-          timestamp: Date.now(),
-        });
-        if (payload.sessionId && payload.sessionId !== selectedSessionId) {
-          onSelectSession?.(payload.sessionId);
-        }
-      });
-
-      eventSource.addEventListener('item.completed', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          item?: { type?: string };
-          sessionId?: string;
-        };
-        const itemType = payload.item?.type ?? 'unknown';
-        appendRunStepDraft({
-          id: createRunStepId(runId, `item.completed-${itemType}`, Date.now()),
-          type: 'item.completed',
-          label:
-            itemType === 'command_execution'
-              ? 'Command completed'
-              : itemType === 'file_change'
-                ? 'File change completed'
-                : 'Item completed',
-          detail: itemType,
-          timestamp: Date.now(),
-        });
-        if (payload.sessionId && payload.sessionId !== selectedSessionId) {
-          onSelectSession?.(payload.sessionId);
-        }
-      });
-
-      eventSource.addEventListener('tool.command.started', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          command?: string;
-        };
-        pushStreamActivity({
-          type: 'tool.command.started',
-          label: 'Command started',
-          command: payload.command ?? '',
-          detail: payload.command ?? '',
-          status: 'in_progress',
-        });
-      });
-
-      eventSource.addEventListener('tool.command.completed', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          command?: string;
-          status?: string;
-          exitCode?: number;
-          output?: string;
-        };
-        pushStreamActivity({
-          type: 'tool.command.completed',
-          label: 'Command completed',
-          command: payload.command ?? '',
-          detail: [payload.command, payload.status, payload.exitCode].filter(Boolean).join(' • '),
-          status: payload.status === 'failed' ? 'failed' : 'completed',
-          output: payload.output,
-          exitCode: payload.exitCode,
-        });
-      });
-
-      eventSource.addEventListener('file.created', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          path?: string;
-        };
-        pushStreamActivity({
-          type: 'file.created',
-          label: 'File created',
-          path: payload.path ?? '',
-          detail: payload.path ?? '',
-        });
-      });
-
-      eventSource.addEventListener('file.updated', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          path?: string;
-        };
-        pushStreamActivity({
-          type: 'file.updated',
-          label: 'File updated',
-          path: payload.path ?? '',
-          detail: payload.path ?? '',
-        });
-      });
-
-      eventSource.addEventListener('chat.update', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          sessionId?: string;
-          text?: string;
-        };
-
-        if (payload.sessionId && payload.sessionId !== selectedSessionId) {
-          onSelectSession?.(payload.sessionId);
-        }
-
-        if (streamAssistantMessageIdRef.current) {
-          setLocalMessages((current) =>
-            current.map((message) =>
-              message.id === streamAssistantMessageIdRef.current
-                ? { ...message, content: payload.text ?? message.content }
-                : message
-            )
-          );
-        }
-
-        shouldScrollToBottomRef.current = true;
-      });
-
-      eventSource.addEventListener('chat.done', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          sessionId?: string;
-          text?: string;
-        };
-
-        if (streamAssistantMessageIdRef.current) {
-          setLocalMessages((current) =>
-            current.map((message) =>
-              message.id === streamAssistantMessageIdRef.current
-                ? { ...message, content: payload.text ?? message.content }
-                : message
-            )
-          );
-        }
-
-        if (payload.sessionId && payload.sessionId !== selectedSessionId) {
-          onSelectSession?.(payload.sessionId);
-        }
-
-        pushStreamActivity({
-          type: 'chat.done',
-          label: 'Run completed',
-          detail: payload.sessionId ?? 'session updated',
-        });
-        eventSource.close();
-        if (streamEventSourceRef.current === eventSource) {
-          streamEventSourceRef.current = null;
-        }
-        streamAssistantMessageIdRef.current = null;
-        shouldScrollToBottomRef.current = true;
-        setStreamRunDraft(null);
-        setIsSubmitting(false);
-        void queryClient.invalidateQueries({ queryKey: ['home-chat-history', payload.sessionId ?? selectedSessionId] });
-      });
-
-      eventSource.addEventListener('chat.error', (event) => {
-        const payload = JSON.parse((event as MessageEvent).data as string) as {
-          message?: string;
-          sessionId?: string;
-        };
-
-        eventSource.close();
-        if (streamEventSourceRef.current === eventSource) {
-          streamEventSourceRef.current = null;
-        }
-        pushStreamActivity({
-          type: 'chat.error',
-          label: 'Run failed',
-          detail: payload.message ?? 'unknown error',
-        });
-        const assistantMessageId = streamAssistantMessageIdRef.current;
-        streamAssistantMessageIdRef.current = null;
-        if (assistantMessageId) {
-          setLocalMessages((current) => current.filter((message) => message.id !== assistantMessageId));
-        }
-        setLocalMessages((current) => [
-          ...current,
-          {
-            id: `${selectedSessionId ?? 'new'}-error-${Date.now()}`,
-            role: 'system',
-            content: payload.message ?? 'Failed to stream prompt',
-          },
-        ]);
-        setStreamRunDraft(null);
-        setIsSubmitting(false);
-        void queryClient.invalidateQueries({ queryKey: ['home-chat-history', payload.sessionId ?? selectedSessionId] });
-      });
-
-      eventSource.onerror = () => {
-        eventSource.close();
-        if (streamEventSourceRef.current === eventSource) {
-          streamEventSourceRef.current = null;
-        }
-        pushStreamActivity({
-          type: 'chat.error',
-          label: 'Stream closed',
-          detail: 'unexpectedly',
-        });
-        const assistantMessageId = streamAssistantMessageIdRef.current;
-        streamAssistantMessageIdRef.current = null;
-        if (assistantMessageId) {
-          setLocalMessages((current) => current.filter((message) => message.id !== assistantMessageId));
-        }
-        setLocalMessages((current) => [
-          ...current,
-          {
-            id: `${selectedSessionId ?? 'new'}-error-${Date.now()}`,
-            role: 'system',
-            content: 'SSE connection closed unexpectedly',
-          },
-        ]);
-        setStreamRunDraft(null);
-        setIsSubmitting(false);
-        void queryClient.invalidateQueries({ queryKey: ['home-chat-history', selectedSessionId] });
-      };
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         return;
@@ -1299,27 +1388,194 @@ export const MainPanel = ({
     setIsSubmitting(false);
   };
 
+  const handleComposerKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void handleSubmitPrompt();
+    }
+  };
+
+  const composerContent = (
+    <>
+      {composerAttachments.length ? (
+        <Box className={styles.composerAttachments}>
+          {composerAttachments.map((attachment) =>
+            attachment.isImage && attachment.previewUrl ? (
+              <Box key={attachment.id} className={styles.composerImageAttachment}>
+                <button
+                  type="button"
+                  className={styles.composerAttachmentImageFrame}
+                  aria-label={`Preview ${attachment.file.name}`}
+                  onClick={() => setPreviewImage(attachment.previewUrl ?? attachment.dataUrl)}
+                >
+                  <Image
+                    className={styles.composerAttachmentImage}
+                    src={attachment.previewUrl}
+                    alt={attachment.file.name}
+                    fill
+                    unoptimized
+                  />
+                </button>
+                <Text size="xs" className={styles.composerAttachmentLabel}>
+                  {attachment.file.name}
+                </Text>
+                <button
+                  type="button"
+                  className={styles.composerImageAttachmentRemove}
+                  aria-label={`Remove ${attachment.file.name}`}
+                  onClick={() => handleRemoveAttachment(attachment.id)}
+                >
+                  <IconX size={12} />
+                </button>
+              </Box>
+            ) : (
+              <Box key={attachment.id} className={styles.composerAttachment}>
+                <Box className={styles.composerAttachmentFileIcon}>
+                  <IconFileText size={18} />
+                </Box>
+                <Text size="sm" className={styles.composerAttachmentLabel}>
+                  {attachment.file.name}
+                </Text>
+                <button
+                  type="button"
+                  className={styles.composerAttachmentRemove}
+                  aria-label={`Remove ${attachment.file.name}`}
+                  onClick={() => handleRemoveAttachment(attachment.id)}
+                >
+                  <IconX size={12} />
+                </button>
+              </Box>
+            )
+          )}
+        </Box>
+      ) : null}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        className={styles.hiddenFileInput}
+        onChange={(event) => handleAddAttachments(event.target.files)}
+      />
+      <Textarea
+        value={draftPrompt}
+        onChange={(event) => setDraftPrompt(event.currentTarget.value)}
+        onPaste={handleComposerPaste}
+        onKeyDown={handleComposerKeyDown}
+        placeholder="Ask anything. @ to use plugins or mention files"
+        className={styles.prompt}
+        autosize
+        minRows={2}
+        maxRows={8}
+        variant="unstyled"
+      />
+      <Box className={styles.composerBar}>
+        <Group gap={6} align="center">
+              <Box className={styles.addMenu} ref={addMenuRef}>
+                <button
+                  type="button"
+                  className={styles.addButton}
+                  aria-label="Add attachment"
+                  onClick={() => setIsAddMenuOpen((current) => !current)}
+                >
+              <IconFilePlus size={16} />
+                </button>
+            {isAddMenuOpen ? (
+              <Box className={styles.addDropdown}>
+                <button
+                  type="button"
+                  className={styles.addMenuItem}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <IconPaperclip size={16} />
+                  <Text className={styles.addMenuLabel}>Upload file</Text>
+                </button>
+              </Box>
+            ) : null}
+          </Box>
+
+          <Button
+            type="button"
+            variant="subtle"
+            className={styles.toolButton}
+            leftSection={<IconSparkles size={14} />}
+          >
+            Full access
+          </Button>
+        </Group>
+
+        <Group gap={8} align="center">
+          <Box className={styles.modelPicker} ref={modelPickerRef}>
+            <button
+              type="button"
+              className={styles.modelButton}
+              aria-label="Open model picker"
+              onClick={() => setIsModelMenuOpen((current) => !current)}
+            >
+              <Group gap={4} align="center" wrap="nowrap">
+                <Text className={styles.model}>{selectedModel.label}</Text>
+                <Text className={styles.modelMuted}>{selectedModel.detail}</Text>
+                <IconChevronDown size={14} className={styles.chevron} />
+              </Group>
+            </button>
+          </Box>
+
+          <button type="button" className={styles.addButton} aria-label="Voice input">
+            <IconSquareCheck size={16} className={styles.iconMuted} />
+          </button>
+
+          <Button
+            type="button"
+            className={styles.sendButton}
+            aria-label={isSubmitting ? 'Stop generation' : 'Send message'}
+            onClick={isSubmitting ? handleStopPrompt : handleSubmitPrompt}
+          >
+            {isSubmitting ? <IconSquareX size={16} /> : <IconSend2 size={16} />}
+          </Button>
+        </Group>
+      </Box>
+    </>
+  );
+
   return (
     <Box className={styles.panel}>
-      <Box className={styles.toolbar}>
-        <Text className={styles.threadTitle}>{chatHistoryData?.title || 'What should we work on?'}</Text>
-        <Box className={styles.toolbarDot} />
-      </Box>
+      {selectedSessionId ? (
+        <Box className={styles.toolbar}>
+          <Text className={styles.threadTitle}>{chatHistoryData?.title || 'What should we work on?'}</Text>
+          <Box className={styles.toolbarDot} />
+        </Box>
+      ) : null}
 
-      <Stack className={styles.body} gap={0} ref={bodyRef}>
-        <Box
-          className={styles.historyPane}
-          ref={historyPaneRef}
-          onScroll={() => {
-            const container = historyPaneRef.current;
-            if (!container || container.scrollTop > 0 || isLoadingOlder) return;
+      {selectedSessionId ? (
+        <Stack className={styles.body} gap={0} ref={bodyRef}>
+          <Box
+            className={styles.historyPane}
+            ref={historyPaneRef}
+            onScroll={() => {
+              const container = historyPaneRef.current;
+              if (!container || container.scrollTop > 0 || isLoadingOlder) return;
 
-            void loadOlderMessages();
-          }}
-        >
-          <Box className={styles.content}>
-            {selectedSessionId ? (
+              void loadOlderMessages();
+            }}
+          >
+            <Box className={styles.content}>
               <Stack className={styles.history} gap={12}>
+                {leadingAssistantMessages.length ? (
+                  <Stack className={`${styles.messageStack} ${styles.assistantStack}`} gap={6}>
+                    {renderMessageImages(
+                      leadingAssistantMessages[0].id,
+                      leadingAssistantMessages[0].images,
+                      handlePreviewImage
+                    )}
+                    <Box className={`${styles.inlineMessage} ${styles.assistant}`}>
+                      {leadingAssistantMessages.map((message) => (
+                        <Box key={message.id}>{renderAssistantContent(message.content)}</Box>
+                      ))}
+                    </Box>
+                  </Stack>
+                ) : null}
                 {conversationSegments.map((segment) => (
                   <Stack key={segment.userMessage.id} gap={10}>
                     {segment.userMessage.role === 'user' ? (
@@ -1355,262 +1611,35 @@ export const MainPanel = ({
                   </Box>
                 ) : null}
               </Stack>
-            ) : (
-              <Stack className={styles.suggestions} gap={0}>
-                {[
-                  'Build an image annotation tool',
-                  'Build a browser mini-game',
-                  'Connect Browser, GitHub, Linear, and more',
-                ].map((item) => (
-                  <Box key={item} className={styles.suggestionRow}>
-                    <Text className={styles.suggestionText}>{item}</Text>
-                  </Box>
-                ))}
-              </Stack>
-            )}
-          </Box>
-        </Box>
-
-        {previewImage ? (
-          <Box className={styles.imagePreviewOverlay} onClick={() => setPreviewImage(null)} role="presentation">
-            <Box
-              className={styles.imagePreviewFrameLarge}
-              onClick={(event) => event.stopPropagation()}
-              role="presentation"
-            >
-              <Image className={styles.imagePreview} src={previewImage} alt="Preview attachment" fill unoptimized />
             </Box>
           </Box>
-        ) : null}
 
-        <Box className={styles.composer} ref={composerRef}>
-          {composerAttachments.length ? (
-            <Box className={styles.composerAttachments}>
-              {composerAttachments.map((attachment) => (
-                <Box
-                  key={attachment.id}
-                  className={attachment.isImage ? styles.composerImageAttachment : styles.composerAttachment}
-                >
-                  {attachment.isImage && attachment.previewUrl ? (
-                    <Box
-                      className={styles.composerAttachmentImageFrame}
-                      onClick={() => setPreviewImage(attachment.previewUrl)}
-                      role="presentation"
-                    >
-                      <Image
-                        className={styles.composerAttachmentImage}
-                        src={attachment.previewUrl}
-                        alt={attachment.file.name}
-                        fill
-                        unoptimized
-                      />
-                      <button
-                        type="button"
-                        className={styles.composerImageAttachmentRemove}
-                        aria-label={`Remove ${attachment.file.name}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleRemoveAttachment(attachment.id);
-                        }}
-                      >
-                        <IconX size={12} />
-                      </button>
-                    </Box>
-                  ) : (
-                    <Box className={styles.composerAttachmentFileIcon}>
-                      <IconFileText size={14} />
-                    </Box>
-                  )}
-                  {!attachment.isImage ? (
-                    <button
-                      type="button"
-                      className={styles.composerAttachmentRemove}
-                      aria-label={`Remove ${attachment.file.name}`}
-                      onClick={() => handleRemoveAttachment(attachment.id)}
-                    >
-                      <IconX size={12} />
-                    </button>
-                  ) : null}
-                </Box>
-              ))}
+          {previewImage ? (
+            <Box className={styles.imagePreviewOverlay} onClick={() => setPreviewImage(null)} role="presentation">
+              <Box
+                className={styles.imagePreviewFrameLarge}
+                onClick={(event) => event.stopPropagation()}
+                role="presentation"
+              >
+                <Image className={styles.imagePreview} src={previewImage} alt="Preview attachment" fill unoptimized />
+              </Box>
             </Box>
           ) : null}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,.pdf,.doc,.docx,.txt,.md,.csv"
-            multiple
-            className={styles.hiddenFileInput}
-            onChange={(event) => handleAddAttachments(event.currentTarget.files)}
-          />
-
-          <Textarea
-            className={styles.prompt}
-            variant="unstyled"
-            autosize
-            minRows={1}
-            maxRows={6}
-            placeholder="Ask anything. @ to use plugins or mention files"
-            value={draftPrompt}
-            onChange={(event) => setDraftPrompt(event.currentTarget.value)}
-            onPaste={handleComposerPaste}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                handleSubmitPrompt();
-              }
-            }}
-          />
-
-          <Group className={styles.composerBar} justify="space-between" wrap="nowrap">
-            <Group gap={14} wrap="nowrap">
-              <Box className={styles.addMenu} ref={addMenuRef}>
-                <button
-                  type="button"
-                  className={styles.addButton}
-                  aria-label="Open add menu"
-                  onClick={() => setIsAddMenuOpen((current) => !current)}
-                >
-                  <IconFilePlus size={16} />
-                </button>
-
-                {isAddMenuOpen ? (
-                  <Box className={styles.addDropdown}>
-                    <button type="button" className={styles.addMenuItem} onClick={() => fileInputRef.current?.click()}>
-                      <IconPaperclip size={14} />
-                      <Text className={styles.addMenuLabel}>Add photos &amp; files</Text>
-                    </button>
-                    <button type="button" className={styles.addMenuItem}>
-                      <IconSquareCheck size={14} />
-                      <Text className={styles.addMenuLabel}>Include IDE context</Text>
-                      <Box className={styles.menuToggleFake} />
-                    </button>
-                    <button type="button" className={styles.addMenuItem}>
-                      <IconSquareCheck size={14} />
-                      <Text className={styles.addMenuLabel}>Plan mode</Text>
-                      <Box className={styles.menuToggleFake} />
-                    </button>
-                    <button type="button" className={styles.addMenuItem}>
-                      <IconSparkles size={14} />
-                      <Text className={styles.addMenuLabel}>Plugins</Text>
-                      <Text className={styles.menuArrow}>?</Text>
-                    </button>
-                  </Box>
-                ) : null}
-              </Box>
-
-              <Button variant="subtle" className={styles.toolButton} leftSection={<IconPaperclip size={16} />}>
-                Full access
-              </Button>
-            </Group>
-
-            <Group gap={10} wrap="nowrap">
-              <Box className={styles.modelPicker} ref={modelPickerRef}>
-                <Button
-                  variant="subtle"
-                  className={styles.modelButton}
-                  rightSection={<IconChevronDown size={16} />}
-                  onClick={() => {
-                    setIsModelMenuOpen((current) => !current);
-                    setModelMenuStep('root');
-                  }}
-                >
-                  <Text className={styles.model}>{selectedModel.label}</Text>
-                  <Text className={styles.modelMuted}>{selectedModel.detail}</Text>
-                </Button>
-
-                {isModelMenuOpen ? (
-                  <Box className={styles.modelDropdown}>
-                    <Box className={styles.modelColumn}>
-                      <Text className={styles.menuTitle}>Intelligence</Text>
-                      <Box className={styles.menuList}>
-                        {intelligenceLevels.map((level) => (
-                          <button key={level} type="button" className={styles.menuItem}>
-                            <Text className={styles.menuItemLabel}>{level}</Text>
-                            {level === 'Low' ? <Text className={styles.menuItemCheck}>?</Text> : null}
-                          </button>
-                        ))}
-                      </Box>
-                    </Box>
-
-                    <Box className={styles.modelColumn}>
-                      <Text className={styles.menuTitle}>Model</Text>
-                      <Box className={styles.menuList}>
-                        {modelVariants.slice(0, 2).map((model) => (
-                          <button
-                            key={model.id}
-                            type="button"
-                            className={`${styles.menuItem} ${model.id === selectedModel.id ? styles.menuItemActive : ''}`}
-                            onClick={() => {
-                              if (model.id === selectedModel.id) {
-                                setModelMenuStep('models');
-                                return;
-                              }
-
-                              onSelectModel(model.id);
-                              setIsModelMenuOpen(false);
-                              setModelMenuStep('root');
-                            }}
-                          >
-                            <Box>
-                              <Text className={styles.menuItemLabel}>{model.label}</Text>
-                              <Text className={styles.menuItemSub}>{model.detail}</Text>
-                            </Box>
-                            <Text className={styles.menuItemArrow}>?</Text>
-                          </button>
-                        ))}
-                        <button type="button" className={styles.menuItem} onClick={() => setModelMenuStep('models')}>
-                          <Box>
-                            <Text className={styles.menuItemLabel}>Other models</Text>
-                          </Box>
-                          <Text className={styles.menuItemArrow}>?</Text>
-                        </button>
-                      </Box>
-                    </Box>
-
-                    {modelMenuStep === 'models' ? (
-                      <Box className={styles.modelSubmenu}>
-                        <Text className={styles.menuTitle}>More Models</Text>
-                        <Box className={styles.menuList}>
-                          {modelVariants.map((model) => (
-                            <button
-                              key={model.id}
-                              type="button"
-                              className={`${styles.menuItem} ${model.id === selectedModel.id ? styles.menuItemActive : ''}`}
-                              onClick={() => {
-                                onSelectModel(model.id);
-                                setIsModelMenuOpen(false);
-                                setModelMenuStep('root');
-                              }}
-                            >
-                              <Box>
-                                <Text className={styles.menuItemLabel}>{model.label}</Text>
-                                <Text className={styles.menuItemSub}>{model.detail}</Text>
-                              </Box>
-                              {model.id === selectedModel.id ? <Text className={styles.menuItemCheck}>?</Text> : null}
-                            </button>
-                          ))}
-                        </Box>
-                      </Box>
-                    ) : null}
-                  </Box>
-                ) : null}
-              </Box>
-
-              <IconSparkles size={16} className={styles.iconMuted} />
-              <Button
-                className={styles.sendButton}
-                aria-label={isSubmitting ? 'Stop prompt' : 'Send'}
-                onClick={isSubmitting ? handleStopPrompt : handleSubmitPrompt}
-                loading={false}
-              >
-                {isSubmitting ? <IconSquareX size={18} /> : <IconSend2 size={18} />}
-              </Button>
-            </Group>
-          </Group>
+          <Box className={styles.composer} ref={composerRef}>
+            {composerContent}
+          </Box>
+        </Stack>
+      ) : (
+        <Box className={styles.landingStage}>
+          <Stack className={styles.landingStageInner} gap={28}>
+            <Text className={styles.landingTitle}>What should we build in agent-app-web?</Text>
+            <Box className={styles.composerLanding} ref={composerRef}>
+              {composerContent}
+            </Box>
+          </Stack>
         </Box>
-      </Stack>
+      )}
     </Box>
   );
 };

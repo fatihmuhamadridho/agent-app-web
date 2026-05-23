@@ -1,16 +1,18 @@
 import Head from 'next/head';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import {
   useGetSidebarData,
   useSidebarCollapsedPersistence,
   useSidebarCollapsedState,
   useSidebarCollapsedToggle,
 } from '@features/Home/infrastructure/home.hook';
+import { clearAllPendingPromptHandoffs } from '@features/Home/infrastructure/home.pending-prompt';
 import { HomeTemplate } from '../templates/Home.template';
 import type { ChatItemView, ModelVariantView, NavItemView, ProjectGroupView } from '../interfaces/home.interface';
 
-const navItems: NavItemView[] = [
-  { label: 'New chat', icon: 'plus', active: true },
+const navItemsBase: NavItemView[] = [
+  { label: 'New chat', icon: 'plus' },
   { label: 'Search', icon: 'search' },
   { label: 'Plugins', icon: 'sparkles' },
   { label: 'Automations', icon: 'clock' },
@@ -23,12 +25,39 @@ const modelVariants: ModelVariantView[] = [
 ];
 
 const HomePage = () => {
+  const router = useRouter();
   const { data } = useGetSidebarData();
-  const [selectedSessionId, setSelectedSessionId] = useState<string | undefined>();
   const [selectedModelId, setSelectedModelId] = useState(modelVariants[0].id);
+  const [newChatResetCounter, setNewChatResetCounter] = useState(0);
   const isSidebarCollapsed = useSidebarCollapsedState();
   useSidebarCollapsedPersistence(isSidebarCollapsed);
   const handleToggleSidebar = useSidebarCollapsedToggle(isSidebarCollapsed);
+  const selectedSessionId =
+    typeof router.query.sessionId === 'string'
+      ? router.query.sessionId
+      : Array.isArray(router.query.sessionId)
+        ? router.query.sessionId[0]
+        : undefined;
+  const isLandingPage = router.pathname === '/';
+
+  const handleSelectSession = (sessionId: string) => {
+    void router.push(`/c/${encodeURIComponent(sessionId)}`);
+  };
+
+  const handleNewChat = () => {
+    clearAllPendingPromptHandoffs();
+    setNewChatResetCounter((current) => current + 1);
+    void router.push('/');
+  };
+
+  const navItems = useMemo(
+    () =>
+      navItemsBase.map((item) => ({
+        ...item,
+        active: item.label === 'New chat' ? isLandingPage : false,
+      })),
+    [isLandingPage]
+  );
 
   const projectGroups: ProjectGroupView[] = useMemo(
     () =>
@@ -62,6 +91,7 @@ const HomePage = () => {
   );
 
   const selectedModel = modelVariants.find((model) => model.id === selectedModelId) ?? modelVariants[0];
+  const mainPanelKey = `${selectedSessionId ?? 'landing'}-${newChatResetCounter}`;
 
   return (
     <>
@@ -74,9 +104,11 @@ const HomePage = () => {
         projectGroups={projectGroups}
         chats={chatsWithActive}
         selectedSessionId={selectedSessionId}
+        mainPanelKey={mainPanelKey}
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={handleToggleSidebar}
-        onSelectSession={setSelectedSessionId}
+        onNewChat={handleNewChat}
+        onSelectSession={handleSelectSession}
         modelVariants={modelVariants}
         selectedModel={selectedModel}
         onSelectModel={setSelectedModelId}

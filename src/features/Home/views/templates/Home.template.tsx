@@ -9,8 +9,10 @@ type HomeTemplateProps = {
   projectGroups: ProjectGroupView[];
   chats: ChatItemView[];
   selectedSessionId?: string;
+  mainPanelKey: string;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
+  onNewChat: () => void;
   onSelectSession: (sessionId: string) => void;
   modelVariants: ModelVariantView[];
   selectedModel: ModelVariantView;
@@ -22,8 +24,10 @@ export const HomeTemplate = ({
   projectGroups,
   chats,
   selectedSessionId,
+  mainPanelKey,
   isSidebarCollapsed,
   onToggleSidebar,
+  onNewChat,
   onSelectSession,
   modelVariants,
   selectedModel,
@@ -37,10 +41,11 @@ export const HomeTemplate = ({
         chats={chats}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={onToggleSidebar}
+        onNewChat={onNewChat}
         onSelectSession={onSelectSession}
       />
       <MainPanel
-        key={selectedSessionId ?? 'empty'}
+        key={mainPanelKey}
         selectedSessionId={selectedSessionId}
         modelVariants={modelVariants}
         selectedModel={selectedModel}

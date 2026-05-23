@@ -47,6 +47,7 @@ type SidebarProps = {
   chats: ChatItemView[];
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onNewChat: () => void;
   onSelectSession?: (sessionId: string) => void;
 };
 
@@ -57,7 +58,7 @@ const navIconMap: Record<string, ReactNode> = {
   Automations: <IconCalendarEvent size={16} />,
 };
 
-export const Sidebar = ({ navItems, projectGroups, chats, isCollapsed, onToggleCollapse, onSelectSession }: SidebarProps) => {
+export const Sidebar = ({ navItems, projectGroups, chats, isCollapsed, onToggleCollapse, onNewChat, onSelectSession }: SidebarProps) => {
   const expandedProjectsStorage = useSyncExternalStore(
     subscribeToProjectExpandedChange,
     getProjectExpandedSnapshot,
@@ -99,13 +100,20 @@ export const Sidebar = ({ navItems, projectGroups, chats, isCollapsed, onToggleC
 
       <Stack className={styles.nav} gap={2}>
         {navItems.map((item) => (
-          <SidebarItem
+          <button
             key={item.label}
-            icon={navIconMap[item.label] ?? <IconMessageCircle size={16} />}
-            label={item.label}
-            active={item.active}
-            collapsed={isCollapsed}
-          />
+            type="button"
+            className={styles.navButton}
+            onClick={item.label === 'New chat' ? onNewChat : undefined}
+            aria-label={item.label}
+          >
+            <SidebarItem
+              icon={navIconMap[item.label] ?? <IconMessageCircle size={16} />}
+              label={item.label}
+              active={item.active}
+              collapsed={isCollapsed}
+            />
+          </button>
         ))}
       </Stack>
 

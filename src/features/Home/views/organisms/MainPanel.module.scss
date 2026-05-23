@@ -52,6 +52,22 @@
   @apply text-center text-[1.9rem] font-normal tracking-tight text-slate-100 md:text-[2.25rem];
 }
 
+.landingStage {
+  @apply flex min-h-0 flex-1 items-center justify-center px-7 py-10;
+}
+
+.landingStageInner {
+  @apply w-full max-w-[760px] items-center;
+}
+
+.landingTitle {
+  @apply text-center text-[2rem] font-normal tracking-tight text-slate-100 md:text-[2.4rem];
+}
+
+.composerLanding {
+  @apply w-full rounded-[28px] border border-white/10 bg-[#2b2b2b] px-4 py-3 shadow-[0_18px_35px_rgba(0,0,0,0.25)];
+}
+
 .composer {
   @apply absolute bottom-6 left-1/2 z-10 w-[min(760px,calc(100%-3.5rem))] -translate-x-1/2 rounded-[28px] border border-white/10 bg-[#2b2b2b] px-4 py-3 shadow-[0_18px_35px_rgba(0,0,0,0.25)];
 }
@@ -65,7 +81,7 @@
 }
 
 .composerImageAttachment {
-  @apply flex w-[84px] shrink-0 flex-col items-start gap-2 text-slate-100;
+  @apply relative flex w-[84px] shrink-0 flex-col items-start gap-2 text-slate-100;
 }
 
 .composerAttachmentImageFrame {
@@ -86,6 +102,10 @@
 
 .composerImageAttachmentRemove {
   @apply absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full border border-black/10 bg-white text-neutral-900 shadow-[0_4px_12px_rgba(0,0,0,0.24)] transition-transform transition-colors hover:scale-105 hover:bg-neutral-100 cursor-pointer;
+}
+
+.composerAttachmentLabel {
+  @apply max-w-full truncate text-slate-100;
 }
 
 .hiddenFileInput {
@@ -244,10 +264,6 @@
   @apply absolute left-[calc(100%+10px)] top-0 z-30 flex w-[250px] flex-col gap-2 rounded-[20px] border border-white/10 bg-[#232323] p-2 shadow-[0_18px_35px_rgba(0,0,0,0.45)];
 }
 
-.suggestions {
-  @apply mx-auto w-full max-w-[760px] text-neutral-400;
-}
-
 .history {
   @apply mx-auto flex w-full max-w-[760px] flex-col gap-3;
 }
@@ -266,6 +282,10 @@
 
 .content {
   @apply min-h-0 w-full flex-1 overflow-visible;
+}
+
+.landing {
+  @apply relative flex h-full w-full items-center justify-center px-7 text-center;
 }
 
 .message {

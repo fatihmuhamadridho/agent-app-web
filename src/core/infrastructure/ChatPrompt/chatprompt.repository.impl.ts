@@ -37,6 +37,25 @@ const writeTempImage = async (dataUrl: string, index: number) => {
   return filePath;
 };
 
+const createThreadOptions = (model: string) => ({
+  workingDirectory: path.resolve(process.cwd()),
+  model: modelMap[model] ?? model,
+  skipGitRepoCheck: true,
+});
+
+export const createPromptThreadSession = (model: string) => {
+  const codex = new Codex({
+    env: process.env as Record<string, string>,
+  });
+
+  const thread = codex.startThread(createThreadOptions(model));
+  if (!thread.id) {
+    throw new Error('Failed to create prompt session');
+  }
+
+  return thread.id;
+};
+
 export class ChatPromptRepositoryImpl extends ChatPromptRepository {
   async sendPrompt(request: ChatPromptRequest): Promise<ChatPromptResponse> {
     const result = await runPromptStream(request);
@@ -84,15 +103,9 @@ export const runPromptStream = async (request: ChatPromptRequest, handlers?: Pro
   const thread =
     request.sessionId && request.sessionId !== 'new'
       ? codex.resumeThread(request.sessionId, {
-          workingDirectory: path.resolve(process.cwd()),
-          model: modelMap[request.model] ?? request.model,
-          skipGitRepoCheck: true,
+          ...createThreadOptions(request.model),
         })
-      : codex.startThread({
-          workingDirectory: path.resolve(process.cwd()),
-          model: modelMap[request.model] ?? request.model,
-          skipGitRepoCheck: true,
-        });
+      : codex.startThread(createThreadOptions(request.model));
 
   const input = localImages.length
     ? [
