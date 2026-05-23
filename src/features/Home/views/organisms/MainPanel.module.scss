@@ -8,8 +8,80 @@
   @apply flex items-center justify-between px-4 py-4 text-neutral-500;
 }
 
+.toolbarIconButton {
+  @apply flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-neutral-300 transition-colors hover:bg-white/[0.08] hover:text-slate-100;
+}
+
 .toolbarDot {
   @apply h-4 w-4 rounded-sm border border-white/20;
+}
+
+.terminalDrawer {
+  @apply absolute bottom-[calc(var(--composer-footprint,96px)+16px)] left-7 right-7 z-20 flex max-h-[42vh] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#181818] shadow-[0_24px_45px_rgba(0,0,0,0.45)];
+}
+
+.terminalHeader {
+  @apply flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3;
+}
+
+.terminalTitle {
+  @apply text-sm font-semibold text-slate-100;
+}
+
+.terminalSubtitle {
+  @apply text-xs text-neutral-400;
+}
+
+.terminalStatus {
+  @apply text-xs font-medium text-neutral-400;
+}
+
+.terminalOutput {
+  @apply max-h-[24vh] overflow-y-auto px-4 py-3 font-mono text-xs leading-5 text-slate-100;
+}
+
+.terminalEntry {
+  @apply mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3;
+}
+
+.terminalCommand {
+  @apply mb-2 text-[11px] font-semibold text-[#ffb066];
+}
+
+.terminalOutputText {
+  @apply whitespace-pre-wrap break-words text-slate-100;
+}
+
+.terminalMeta {
+  @apply mt-2 text-[11px] text-neutral-500;
+}
+
+.terminalError {
+  @apply mt-2 whitespace-pre-wrap break-words text-[11px] text-red-300;
+}
+
+.terminalEmpty {
+  @apply text-sm text-neutral-400;
+}
+
+.terminalComposer {
+  @apply border-t border-white/10 px-4 py-3;
+}
+
+.terminalInput :global(textarea) {
+  @apply mb-3 min-h-[72px] bg-white/[0.03] text-sm text-slate-100;
+}
+
+.terminalHint {
+  @apply text-xs text-neutral-400;
+}
+
+.terminalRunButton {
+  @apply rounded-full bg-white text-sm font-medium text-neutral-900 hover:bg-neutral-100;
+}
+
+.terminalErrorBanner {
+  @apply mt-2 text-sm text-red-300;
 }
 
 .threadTitle {

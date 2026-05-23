@@ -87,3 +87,65 @@ export interface ModelVariantView {
   label: string;
   detail: string;
 }
+
+export interface ComposerAttachmentView {
+  id: string;
+  fileName: string;
+  previewUrl: string | null;
+  dataUrl: string | null;
+  isImage: boolean;
+}
+
+export interface RunTimelineView {
+  run: ChatHistoryRunView;
+  durationText: string;
+  isLatest: boolean;
+}
+
+export interface ConversationSegmentView {
+  id: string;
+  userMessage?: ChatMessageView;
+  assistantMessages: ChatMessageView[];
+  runItems: RunTimelineView[];
+}
+
+export interface TerminalEntryView {
+  id: string;
+  command: string;
+  output: string;
+  status: 'running' | 'completed' | 'failed';
+  exitCode: number | null;
+  errorMessage: string | null;
+  createdAt: number;
+}
+
+export interface TerminalDrawerView {
+  isOpen: boolean;
+  isSubmitting: boolean;
+  draftCommand: string;
+  error: string | null;
+  entries: TerminalEntryView[];
+}
+
+export interface ComposerView {
+  draftPrompt: string;
+  attachments: ComposerAttachmentView[];
+  selectedModel: ModelVariantView;
+  modelVariants: ModelVariantView[];
+  isSubmitting: boolean;
+  isAddMenuOpen: boolean;
+  isModelMenuOpen: boolean;
+}
+
+export interface MainPanelViewProps {
+  selectedSessionId?: string;
+  title: string;
+  isLandingPage: boolean;
+  previewImage: string | null;
+  leadingAssistantMessages: ChatMessageView[];
+  conversationSegments: ConversationSegmentView[];
+  isLoadingOlder: boolean;
+  isPromptSubmitting: boolean;
+  composer: ComposerView;
+  terminal: TerminalDrawerView;
+}
